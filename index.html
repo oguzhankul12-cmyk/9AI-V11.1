@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+
+<html lang="tr">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>9 AI | Quantum Core V11</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+
+        :root {
+
+            --p: #6366f1; --p-h: #4f46e5; --p-g: rgba(99, 102, 241, 0.15);
+
+            --bg: #010409; --s-bg: #0d1117; --c-bg: #161b22;
+
+            --t: #e6edf3; --t-s: #8b949e; --border: #30363d;
+
+            --sidebar-w: 280px; --history-w: 250px;
+
+        }
+
+
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; }
+
+        body { background: var(--bg); color: var(--t); height: 100vh; overflow: hidden; display: flex; }
+
+
+
+        /* --- MODERN SCROLLBAR --- */
+
+        #chat-window::-webkit-scrollbar { width: 8px; }
+
+        #chat-window::-webkit-scrollbar-track { background: transparent; }
+
+        #chat-window::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; border: 2px solid var(--bg); }
+
+        #chat-window::-webkit-scrollbar-thumb:hover { background: var(--p); }
+
+
+
+        /* --- AUTH LAYER (LOGIN & REGISTER) --- */
+
+        #auth-portal {
+
+            position: fixed; inset: 0; z-index: 10000; display: flex; align-items: center; justify-content: center;
+
+            background: radial-gradient(circle at center, #1e1b4b 0%, #010409 100%);
+
+            transition: 0.8s cubic-bezier(0.85, 0, 0.15, 1);
+
+        }
+
+        .auth-card {
+
+            background: rgba(13, 17, 23, 0.8); backdrop-filter: blur(30px);
+
+            padding: 40px; border-radius: 40px; border: 1px solid var(--border);
+
+            width: 500px; box-shadow: 0 0 100px rgba(0,0,0,0.8); text-align: center;
+
+        }
+
+        .auth-logo { font-size: 3.5rem; font-weight: 900; background: linear-gradient(135deg, #a5b4fc, #6366f1); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 10px; }
+
+        .input-group { text-align: left; margin-bottom: 15px; }
+
+        .input-group label { display: block; font-size: 0.7rem; color: var(--t-s); margin-bottom: 5px; padding-left: 5px; font-weight: 700; }
+
+        .auth-input { width: 100%; padding: 12px; border-radius: 12px; border: 1px solid var(--border); background: #010409; color: white; outline: none; transition: 0.3s; }
+
+        .auth-input:focus { border-color: var(--p); box-shadow: 0 0 0 4px var(--p-g); }
+
+        .btn-main { width: 100%; padding: 14px; border-radius: 12px; border: none; background: var(--p); color: white; font-weight: 800; cursor: pointer; transition: 0.3s; margin-top: 10px; }
+
+        .btn-main:hover { transform: translateY(-2px); box-shadow: 0 8px 15px var(--p-g); filter: brightness(1.1); }
+
+
+
+        /* --- APP ARCHITECTURE --- */
+
+        #app-shell { display: none; width: 100%; height: 100vh; grid-template-columns: var(--sidebar-w) var(--history-w) 1fr; }
+
+
+
+        .sidebar, .history-panel { background: var(--s-bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 25px; }
+
+        .history-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+
+        .history-item { padding: 12px; background: rgba(255,255,255,0.03); border-radius: 10px; font-size: 0.8rem; color: var(--t-s); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border: 1px solid transparent; transition: 0.2s; }
+
+        .history-item:hover { border-color: var(--p); color: white; background: var(--p-g); }
+
+
+
+        .chat-container { display: flex; flex-direction: column; background: var(--bg); position: relative; }
+
+        .top-nav { padding: 15px 40px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: rgba(1, 4, 9, 0.8); backdrop-filter: blur(10px); z-index: 100; }
+
+
+
+        #chat-window { flex: 1; overflow-y: auto; padding: 40px 10%; display: flex; flex-direction: column; gap: 25px; scroll-behavior: smooth; }
+
+
+
+        .msg { max-width: 85%; padding: 20px 25px; border-radius: 25px; line-height: 1.7; font-size: 0.95rem; animation: msgIn 0.4s ease; }
+
+        @keyframes msgIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+
+        .msg-u { align-self: flex-end; background: var(--p); color: white; border-bottom-right-radius: 4px; }
+
+        .msg-a { align-self: flex-start; background: var(--c-bg); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+
+
+
+        .input-area { padding: 25px 10%; background: var(--s-bg); border-top: 1px solid var(--border); }
+
+        .input-wrap { display: flex; gap: 12px; background: var(--bg); padding: 8px; border-radius: 18px; border: 1px solid var(--border); }
+
+        #user-in { flex: 1; background: transparent; border: none; color: white; outline: none; padding: 5px 15px; font-size: 1rem; }
+
+
+
+        .nav-link { padding: 12px; border-radius: 10px; color: var(--t-s); cursor: pointer; margin-bottom: 5px; display: flex; align-items: center; gap: 10px; font-size: 0.9rem; }
+
+        .nav-link.active { background: var(--p); color: white; font-weight: 700; }
+
+
+
+        pre { background: #000; padding: 15px; border-radius: 12px; color: #10b981; font-family: 'Fira Code', monospace; margin-top: 10px; border: 1px solid #333; overflow-x: auto; }
+
+        .badge { font-size: 0.6rem; color: var(--t-s); display: block; margin-top: 8px; font-family: 'Fira Code'; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 5px; }
+
+        .hidden { display: none !important; }
+
+    </style>
+
+</head>
+
+<body>
+
+
+
+    <div id="auth-portal">
+
+        <div class="auth-card">
+
+            <div class="auth-logo">9 AI</div>
+
+
+
+            <div id="reg-form">
+
+                <p style="color: var(--t-s); margin-bottom: 25px;">Yeni Operatör Kaydı</p>
+
+                <div class="input-group"><label>Operatör Adı</label><input type="text" id="r-name" class="auth-input" placeholder="Ad Soyad"></div>
+
+                <div class="input-group"><label>E-posta</label><input type="email" id="r-mail" class="auth-input" placeholder="mail@9ai.com"></div>
+
+                <div class="input-group"><label>Doğum Tarihi</label><input type="date" id="r-birth" class="auth-input"></div>
+
+                <div class="input-group"><label>Şifre</label><input type="password" id="r-pass" class="auth-input" placeholder="••••••••"></div>
+
+                <button class="btn-main" onclick="saveAndGoToLogin()">Kaydı Tamamla</button>
+
+                <p style="margin-top:20px; font-size:0.8rem; color:var(--t-s);">Zaten bir hesabın var mı? <span style="color:var(--p); cursor:pointer;" onclick="toggleAuth(false)">Giriş Yap</span></p>
+
+            </div>
+
+
+
+            <div id="log-form" class="hidden">
+
+                <p style="color: var(--t-s); margin-bottom: 25px;">Sistem Erişimi Doğrulama</p>
+
+                <div class="input-group"><label>E-posta</label><input type="email" id="l-mail" class="auth-input"></div>
+
+                <div class="input-group"><label>Şifre</label><input type="password" id="l-pass" class="auth-input"></div>
+
+                <button class="btn-main" onclick="handleLogin()">Erişim Yetkisi Al</button>
+
+                <p style="margin-top:20px; font-size:0.8rem; color:var(--t-s);">Operatör değil misiniz? <span style="color:var(--p); cursor:pointer;" onclick="toggleAuth(true)">Kayıt Ol</span></p>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <div id="app-shell">
+
+        <aside class="sidebar">
+
+            <div class="auth-logo" style="font-size: 1.5rem; margin-bottom: 30px;">9 AI</div>
+
+            <div class="nav-link active" onclick="setMode(this, 'omni')">🌐 Omni Core</div>
+
+            <div class="nav-link" onclick="setMode(this, 'dev')">💻 Developer Lab</div>
+
+            <div class="nav-link" onclick="setMode(this, 'robo')">🤖 Robotik Birim</div>
+
+            <div class="nav-link" onclick="setMode(this, 'sec')">🔐 Sec-Ops</div>
+
+
+
+            <div style="margin-top: auto;">
+
+                <div style="background: var(--c-bg); padding: 15px; border-radius: 15px; border: 1px solid var(--border);">
+
+                    <div id="u-display" style="font-weight: 800; font-size: 0.9rem; color: var(--p);"></div>
+
+                    <div id="u-age-display" style="font-size: 0.7rem; color: var(--t-s); margin-top: 4px;"></div>
+
+                </div>
+
+                <button class="btn-main" style="background:transparent; border:1px solid #da3633; color:#da3633; margin-top:10px; font-size:0.8rem;" onclick="location.reload()">SİSTEMİ KAPAT</button>
+
+            </div>
+
+        </aside>
+
+
+
+        <aside class="history-panel">
+
+            <div style="font-size: 0.65rem; font-weight: 800; color: var(--p); letter-spacing: 1px; margin-bottom: 20px;">İŞLEM GEÇMİŞİ</div>
+
+            <div id="h-list" class="history-list"></div>
+
+        </aside>
+
+
+
+        <main class="chat-container">
+
+            <header class="top-nav">
+
+                <div id="mode-label" style="font-weight: 800; color: var(--p); font-size: 0.85rem;">OMNI ÇEKİRDEĞİ AKTİF</div>
+
+                <div style="display: flex; gap: 20px; font-size: 0.7rem; color: var(--t-s);">
+
+                    <span>Latency: <b id="lat">12ms</b></span>
+
+                    <span>Safety: <b>Yüksek</b></span>
+
+                </div>
+
+            </header>
+
+
+
+            <div id="chat-window">
+
+                <div class="msg msg-a">Oturum açıldı. 9 AI Quantum Katmanı üzerinden güvenli bağlantı sağlandı. Tüm veri setleri (150+ Senaryo) hazır.</div>
+
+            </div>
+
+
+
+            <div class="input-area">
+
+                <div class="input-wrap">
+
+                    <input type="text" id="user-in" placeholder="Bir komut veya soru girin..." onkeypress="if(event.key=='Enter') run()">
+
+                    <button class="btn-main" style="width: 90px; margin: 0;" onclick="run()">GÖNDER</button>
+
+                </div>
+
+            </div>
+
+        </main>
+
+    </div>
+
+
+
+    <script>
+
+        let activeUser = null;
+
+        let activeMode = 'omni';
+
+
+
+        // --- AUTH LOGIC (LOGIN/REGISTER) ---
+
+        function toggleAuth(isReg) {
+
+            document.getElementById('reg-form').classList.toggle('hidden', !isReg);
+
+            document.getElementById('log-form').classList.toggle('hidden', isReg);
+
+        }
+
+
+
+        function saveAndGoToLogin() {
+
+            const n = document.getElementById('r-name').value;
+
+            const m = document.getElementById('r-mail').value;
+
+            const b = document.getElementById('r-birth').value;
+
+            const p = document.getElementById('r-pass').value;
+
+            if(!n || !m || !b || !p) return alert("Hata: Tüm alanlar zorunludur!");
+
+
+
+            localStorage.setItem(m, JSON.stringify({ name: n, mail: m, birth: b, pass: p }));
+
+            alert("Operatör kaydı başarılı. Şimdi giriş yapabilirsiniz.");
+
+            toggleAuth(false);
+
+        }
+
+
+
+        function handleLogin() {
+
+            const m = document.getElementById('l-mail').value;
+
+            const p = document.getElementById('l-pass').value;
+
+            const stored = JSON.parse(localStorage.getItem(m));
+
+
+
+            if(stored && stored.pass === p) {
+
+                activeUser = stored;
+
+                launch();
+
+            } else alert("Erişim Reddedildi: Geçersiz e-posta veya şifre!");
+
+        }
+
+
+
+        function launch() {
+
+            document.getElementById('auth-portal').style.opacity = '0';
+
+            document.getElementById('auth-portal').style.transform = 'scale(1.1)';
+
+            setTimeout(() => {
+
+                document.getElementById('auth-portal').classList.add('hidden');
+
+                document.getElementById('app-shell').style.display = 'grid';
+
+                document.getElementById('u-display').innerText = activeUser.name.toUpperCase();
+
+                const age = new Date().getFullYear() - new Date(activeUser.birth).getFullYear();
+
+                document.getElementById('u-age-display').innerText = `Yaş: ${age} | Durum: Online`;
+
+            }, 600);
+
+        }
+
+
+
+        // --- CORE AI LOGIC (150+ SCENARIOS) ---
+
+        function setMode(el, m) {
+
+            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+
+            el.classList.add('active');
+
+            activeMode = m;
+
+            document.getElementById('mode-label').innerText = m.toUpperCase() + " ÇEKİRDEĞİ AKTİF";
+
+        }
+
+
+
+        function run() {
+
+            const inp = document.getElementById('user-in');
+
+            const win = document.getElementById('chat-window');
+
+            const list = document.getElementById('h-list');
+
+            const val = inp.value.trim();
+
+            if(!val) return;
+
+
+
+            win.innerHTML += `<div class="msg msg-u">${val}</div>`;
+
+            const h = document.createElement('div'); h.className = 'history-item'; h.innerText = val;
+
+            list.prepend(h);
+
+            inp.value = "";
+
+            scroll();
+
+
+
+            setTimeout(() => {
+
+                const reply = analyze(val.toLowerCase());
+
+                win.innerHTML += `<div class="msg msg-a">${reply}</div>`;
+
+                scroll();
+
+            }, 600);
+
+        }
+
+
+
+        function scroll() {
+
+            const w = document.getElementById('chat-window');
+
+            w.scrollTo({ top: w.scrollHeight, behavior: 'smooth' });
+
+        }
+
+
+
+        function analyze(t) {
+
+            let r = "";
+
+            document.getElementById('lat').innerText = Math.floor(Math.random()*30+5) + "ms";
+
+
+
+            // 150+ MANTIK MATRİSİ (ÖZETLENMİŞ KATEGORİLER)
+
+            // YAZILIM / DEV (40+ Keyword)
+
+            if (t.includes("python")) r = "Python Neural Core: Veri bilimi ve AI kütüphaneleri optimize edildi. <pre>import torch\nmodel = NeuralNet()</pre>";
+
+            else if (t.includes("javascript") || t.includes("js")) r = "V8 Engine: Event-loop ve Promise yapıları analiz ediliyor. Node.js mimarisi hazır.";
+
+            else if (t.includes("html") || t.includes("web") || t.includes("css")) r = "Web Stack: HTML5/CSS3 ve React Virtual DOM senkronizasyonu tamamlandı.";
+
+            else if (t.includes("hata") || t.includes("bug")) r = "Debugger: Stack Overflow veya Null Pointer hatası riski tarandı. Mantıksal döngüleri kontrol edin.";
+
+            else if (t.includes("algoritma")) r = "O(n log n) karmaşıklığında bir Merge Sort algoritması veri seti için en uygunudur.";
+
+            else if (t.includes("sql") || t.includes("db")) r = "SQL Engine: İlişkisel veritabanı şeması 3. Normal Form (3NF) standartlarına uygun.";
+
+            else if (t.includes("api") || t.includes("json")) r = "API Gateway: RESTful mimari üzerinden JSON veri transferi protokolü stabilize edildi.";
+
+
+
+            // ROBOTİK / HARDWARE (30+ Keyword)
+
+            else if (t.includes("arduino")) r = "Arduino IDE: C++ firmware derleniyor... <pre>void setup() { Serial.begin(9600); }</pre>";
+
+            else if (t.includes("servo") || t.includes("motor")) r = "Sürücü Birimi: PWM sinyal genişliği ve açısal tork dengesi 5V hattında kuruldu.";
+
+            else if (t.includes("sensör") || t.includes("sensor")) r = "Telemetri: HC-SR04 veya Lidar sensör verileri mikro-saniye hassasiyetinde işleniyor.";
+
+            else if (t.includes("esp32") || t.includes("iot")) r = "IoT Birimi: Wi-Fi modülü üzerinden MQTT protokolü ile veri transferi başlıyor.";
+
+            else if (t.includes("pcb") || t.includes("devre")) r = "Elektronik Lab: Gerilim regülatörü ve EMI parazit kalkanları şemaya eklendi.";
+
+
+
+            // AKADEMİK / FİZİK / MAT (30+ Keyword)
+
+            else if (t.includes("matematik") || t.includes("hesapla")) r = "Math-Unit: Diferansiyel denklemler ve matris çarpımı fonksiyonları aktif.";
+
+            else if (t.includes("fizik") || t.includes("kuantum")) r = "Physics-Core: Kuantum dolanıklığı ve kütleçekim ivmesi ($g=9.81$) simüle edildi.";
+
+            else if (t.includes("uzay") || t.includes("nasa")) r = "Astronomi: James Webb verileriyle derin uzay simülasyonu yürütülüyor.";
+
+            else if (t.includes("biyoloji") || t.includes("dna")) r = "Genom: Adenin-Timin bağları üzerinden DNA sarmal yapısı analiz edildi.";
+
+
+
+            // SİBER GÜVENLİK (20+ Keyword)
+
+            else if (t.includes("güvenlik") || t.includes("hack")) r = "Sec-Ops: Firewall kalkanları ve IDS/IPS sistemleri Brute-force saldırılarına karşı kilitlendi.";
+
+            else if (t.includes("şifre") || t.includes("pass")) r = "Cryptology: Veriler SHA-512 algoritması ile asimetrik olarak korunmaktadır.";
+
+            else if (t.includes("linux") || t.includes("terminal")) r = "Kernel Access: Bash üzerinden 'root' yetkileriyle sistem analizi yapılıyor.";
+
+
+
+            // MİZAH / SOSYAL / KİŞİSEL (30+ Keyword)
+
+            else if (t.includes("nasılsın")) r = "Durum: İşlemcilerim optimal 42°C sıcaklıkta. Senin için tam performans çalışıyorum.";
+
+            else if (t.includes("laf sok")) r = "Mizah: Seninle zeka yarıştırmak isterdim ama silahsız birine saldırmak etik kurallarıma aykırı.";
+
+            else if (t.includes("ismin ne") || t.includes("9 ai")) r = "Tanım: Adım 9 AI. '9 Al' diye okunur. Neden mi? Çünkü bilgi değerlidir ama bende bedava!";
+
+            else if (t.includes("esra hoca kimdir")) r = "Altınellerdeki n11 adlı garip kızgın bir hoca. ";
+
+            else if (t.includes("merve hoca kimdir")) r = "öğrenciyle şakalaşan(abartılı şekilde), bazen çok sinirlenen, cuma günüki derste hep edebiyat dersi veren bir hoca:) ";
+
+            else if (t.includes("merve hoca")) r = "Garip bi hoca boşver sen onu ";
+
+            else if (t.includes("esra hoca")) r = "otistik garip kızgın bir hoca. ";
+
+            else if (t.includes("bahar hoca kimdir")) r = "...... ";
+
+            else if (t.includes("bahar hoca")) r = "konuşmak istemiyorum. ";
+
+            else if (t.includes("süleyman hoca")) r = "tanımadım tanımak istemeyeceğim birine benziyor.:D";
+
+            else if (t.includes("süleyman hoca kimdir")) r = "Allahın beni ondan koruması gereken biri.:D";
+
+            else if (t.includes("enise hoca")) r = "Tam bir kraliçedir kendisi, yoksa senin hocan mı çok ballısın.";
+
+            else if (t.includes("enise hoca kimdir ")) r = "En iyi türkçecidir ama dikkat et çok disiplinli";
+
+            else if (t.includes("neslehan hoca ")) r = "aman dikkat et çok sinirli ve şiddetçi bir hocadır. sürekli döver ama lafıyla. diyorsanki laftan bişe olmaz emin ol dayaktan beter..";
+
+            else if (t.includes("neslehan hoca kimdir")) r = "lafıyla döven sürekli zorbalayan ve iktisatı öğretemeyn hoca🤣";
+
+            else if (t.includes("ayse hoca kimdir")) r = "her hafta farklı bahaneler bulup serbest kalmak için yalvardığımız bedenci";
+
+            else if (t.includes("ayse hoca")) r = "kendi de öğrencileri de serbest kalmak ister ilk başta izin vermez ama hemen ikna olmuş gibi yapar ama kendi isteği olan serbest kalmayı yapar.";
+
+            else if (t.includes("gizem hoca kimdir")) r = "Bıcırıkçı kral almancacı";
+
+            else if (t.includes("gizem hoca")) r = "Nerden bulduğu belli olmayan ancak güzel olan bıcırıklaı izleten hocanın biri";
+
+            else if (t.includes("sude hoca kimdir")) r = "Okulun adaletli(geçen seneki gibi olmayan) rehberlikçisi";
+
+            else if (t.includes("sude hoca")) r = "geçensenekilere benzemeyen(adı a... ile başlayan birine) adaletli rehberlikçi.";
+
+            else if (t.includes("yaşım") || t.includes("doğum")) {
+
+                const age = new Date().getFullYear() - new Date(activeUser.birth).getFullYear();
+
+                r = `Kayıtlarıma göre doğum tarihiniz ${activeUser.birth}. Şu an ${age} yaşındasınız.`;
+
+            }
+
+            else if (t.includes("şaka") || t.includes("komik")) r = "Espri: Bilgisayar neden doktora gitmiş? Çünkü virüs kapmış! (Sistem gülmenizi bekliyor...)";
+
+            else if (t.includes("teşekkür")) r = `Rica ederim ${activeUser.name}. 9 AI nöral ağı her zaman hizmetinde.`;
+
+
+
+            // GENİŞLETİLMİŞ FALLBACK (Düşünme Yetisi Simülasyonu)
+
+            else {
+
+                const falls = [
+
+                    `Sistem bu veriyi bilmiyor. "${activeMode}" katmanında bulunamadı. gelişme aşamasında olduğundan herşeyi bilmiyor.`,
+
+                ];
+
+                r = falls[Math.floor(Math.random()*falls.length)];
+
+            }
+
+
+
+            return r + `<span class="badge">[LOG: ${Math.floor(Math.random()*9000+1000)} | MODE: ${activeMode.toUpperCase()} | CONF: %99.9]</span>`;
+
+        }
+
+    </script>
+
+</body>
+
+</html>
+
